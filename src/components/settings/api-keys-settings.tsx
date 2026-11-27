@@ -16,8 +16,9 @@
 // ============================================================
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Copy, KeyRound, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, BookOpen, Copy, KeyRound, Loader2, Plus, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ import {
 } from '@/lib/api-keys/scopes';
 import { useTranslations } from 'next-intl';
 import { SettingsPanelHead } from './settings-panel-head';
+import { ApiDocumentation } from './api-documentation';
 
 interface ApiKey {
   id: string;
@@ -71,8 +73,12 @@ function keyStatus(k: ApiKey): 'active' | 'revoked' | 'expired' {
 
 export function ApiKeysSettings() {
   const { canEditSettings } = useAuth();
+  const searchParams = useSearchParams();
   const t = useTranslations('Settings.apiKeys');
 
+  const [activeTab, setActiveTab] = useState<'keys' | 'docs'>(
+    searchParams.get('view') === 'docs' ? 'docs' : 'keys'
+  );
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -145,16 +151,70 @@ export function ApiKeysSettings() {
           })
         }
         action={
-          <RequireRole min="admin">
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" />
-              {t('newApiKey')}
-            </Button>
-          </RequireRole>
+          activeTab === 'keys' ? (
+            <RequireRole min="admin">
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="size-4" />
+                {t('newApiKey')}
+              </Button>
+            </RequireRole>
+          ) : null
         }
       />
 
-      {keys.length === 0 ? (
+      {/* Sub-tabs for Keys and Documentation */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+        <div className="flex rounded-lg border bg-muted/60 p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('keys')}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-medium transition-all ${
+              activeTab === 'keys'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <KeyRound className="size-3.5" />
+            API Keys
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('docs')}
+            className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-medium transition-all ${
+              activeTab === 'docs'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BookOpen className="size-3.5" />
+            API Documentation & CRM Integration
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'docs' ? (
+        <ApiDocumentation />
+      ) : (
+        <>
+          {/* Quick link banner to documentation */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs">
+            <div className="flex items-center gap-2">
+              <BookOpen className="size-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">
+                Need to connect an external CRM (HubSpot, Salesforce, Zoho, Zapier) or scripts?
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('docs')}
+              className="text-primary hover:underline font-medium inline-flex items-center gap-1 shrink-0"
+            >
+              Open API Documentation & Examples
+              <ArrowRight className="size-3" />
+            </button>
+          </div>
+
+          {keys.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-10 text-center">
             <KeyRound className="text-muted-foreground size-6" />
@@ -265,6 +325,8 @@ export function ApiKeysSettings() {
             </ul>
           </CardContent>
         </Card>
+      )}
+      </>
       )}
 
       <CreateKeyDialog
